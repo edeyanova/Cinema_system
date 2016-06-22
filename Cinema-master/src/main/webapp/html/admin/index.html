@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Cinema</title>
+<meta charset="UTF-8">
+<!-- <link rel="stylesheet" type="text/css "
+	href="./../../styles/userstyle.css"> -->
+<link rel="stylesheet" type="text/css"
+	href="./../../styles/program-style.css">
+<link rel="stylesheet" type="text/css"
+	href="./../../styles/admin-style.css">
+<script type="text/javascript" src="./../../js/jquery-2.1.3.min.js"></script>
+
+<script type="text/javascript">
+	$(function() {
+		$.ajax({
+			url : './../../rest/users',
+			type : "GET",
+			contentType : "application/json;charset=UTF-8",
+			dataType : "json",
+			statusCode : {
+				200 : function(data) {
+					var users = data.user;
+
+					for (var i = 0; i < users.length; i++) {
+						var user = users[i];
+
+						var option = '<option value="'+ user.userName +'">'
+								+ user.name + '</option>';
+
+						$('#userList').append(option);
+					}
+				}
+			}
+		});
+		$.ajax({
+			url : './../../rest/screenings/allScreenings',
+			type : "GET",
+			contentType : "application/json;charset=UTF-8",
+			statusCode : {
+				200 : function(data) {
+					var screenings = data.screening;
+					for (var i = 0; i < screenings.length; i++) {
+						var screening = screenings[i];
+						var option = '<option value="'+ screening.id +'">'
+								+ 'Movie: ' + screening.movie.title + ' Date: '
+								+ screening.date + ' Hall: '
+								+ screening.hall.number
+						'</option>';
+
+						$('#allScreenings').append(option);
+
+					}
+				}
+			}
+		});
+	});
+
+	$(document).ready(
+			function() {
+				$('#getTicketsByUser').click(
+						function() {
+							var id = $('#userList').find(":selected").val();
+							console.log(id);
+							$.ajax({
+								url : './../../rest/tickets/username/' + id,
+								type : "GET",
+								dataType : "json",
+								success : function(data) {
+									renderTableByUsers(data.ticket);
+								}
+							});
+						});
+				$('#getTicketsByScreening').click(function() {
+					var id = $('#allScreenings').find(":selected").val();
+					var a = './../../rest/tickets/' + id;
+					$.ajax({
+						url : a,
+						type : "GET",
+						contentType : "application/json;charset=UTF-8",
+						statusCode : {
+							200 : function(data) {
+								var tickets = data.ticket;
+								$("#screening_table tr:gt(0)").remove();
+								for (var i = 0; i < tickets.length; i++) {
+									var ticket = tickets[i];
+									renderRowByScreenings(ticket);
+								}
+							}
+						}
+					});
+
+				});
+			});
+	function renderRowByScreenings(ticket) {
+		var row = $("<tr />")
+		$("#screening_table").append(row);
+		row.append($("<td>" + ticket.seat.rowNumber + "</td>"));
+		row.append($("<td>" + ticket.seat.colNumber + "</td>"));
+		row.append($("<td>" + ticket.user.name + "</td>"));
+		row.append($("<td>" + ticket.checked + "</td>"));
+		if (ticket.checked == false) {
+			row.append($("<td>" + "<button onclick=check1(" + ticket.id
+					+ ") value=" + ticket.id + ">Check</button>" + "</td>"));
+		}
+	}
+	function renderTableByUsers(tickets) {
+		$("#tickets_table tr:gt(0)").remove();
+		for (var i = 0; i < tickets.length; i++) {
+			renderRowByUsers(tickets[i]);
+		}
+	}
+
+	function renderRowByUsers(ticket) {
+		var row = $("<tr />")
+		$("#tickets_table").append(row);
+		row.append($("<td>" + ticket.screening.movie.title + "</td>"));
+		row.append($("<td>" + ticket.screening.movie.price + "</td>"));
+		row.append($("<td>" + ticket.screening.date + "</td>"));
+		row.append($("<td>" + ticket.screening.hall.number + "</td>"));
+		row.append($("<td>" + ticket.seat.rowNumber + "</td>"));
+		row.append($("<td>" + ticket.seat.colNumber + "</td>"));
+		row.append($("<td>" + ticket.checked + "</td>"));
+		if (ticket.checked == false) {
+			row.append($("<td>" + "<button onclick=check(" + ticket.id
+					+ ") value=" + ticket.id + ">Check</button>" + "</td>"));
+		}
+	}
+
+	function check(id) {
+		$.ajax({
+			url : './../../rest/tickets/' + id,
+			type : "POST",
+			contentType : "application/json;charset=UTF-8",
+			statusCode : {
+				200 : function() {
+					$.ajax({
+						url : './../../rest/tickets/username/'
+								+ $('#userList').find(":selected").val(),
+						type : "GET",
+						dataType : "json",
+						success : function(data) {
+							renderTableByUsers(data.ticket);
+						}
+					});
+				}
+			},
+			400 : function() {
+				alert("Error checking ticket!");
+			}
+		})
+	};
+	
+	function check1(id) {
+		$.ajax({
+			url : './../../rest/tickets/' + id,
+			type : "POST",
+			contentType : "application/json;charset=UTF-8",
+			statusCode : {
+				200 : function() {
+					$('#getTicketsByScreening').click();
+				}
+			},
+			400 : function() {
+				alert("Error checking ticket!");
+			}
+		})
+	};
+</script>
+
+</head>
+<body>
+	<br>
+	<div align="center">
+		<h1>Cinema ---- ADMIN</h1>
+	</div>
+
+
+	<br>
+	<br>
+
+	<select id="userList">
+	</select>
+
+	<button id="getTicketsByUser">Get Tickets By User</button>
+
+
+	<div>
+		<table id="tickets_table" class="CSSTableGenerator">
+			<tr>
+				<th>Movie</th>
+				<th>Price</th>
+				<th>Date</th>
+				<th>Hall</th>
+				<th>Seat Row</th>
+				<th>Seat Column</th>
+				<th>Checked</th>
+			</tr>
+		</table>
+	</div>
+
+
+	<br>
+	<br>
+
+
+	<br>
+	<br>
+
+	<select id="allScreenings">
+	</select>
+
+	<button id="getTicketsByScreening">Ticket by screening</button>
+	<div>
+		<table id="screening_table" class="CSSTableGenerator">
+			<tr>
+				<th>Row</th>
+				<th>Column</th>
+				<th>Name</th>
+				<th>Checked</th>
+			</tr>
+		</table>
+	</div>
+
+	<br>
+	<br>
+
+	<form id="logout_form" name="logout_form" method="get"
+		action="./../../rest/user/logout">
+		<button type="submit" class="btn btn-default">Log out</button>
+	</form>
+	<br>
+</body>
+</html>
